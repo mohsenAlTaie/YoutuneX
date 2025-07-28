@@ -1,3 +1,5 @@
+import shutil
+print("FFmpeg first check:", shutil.which("ffmpeg"))
 import os
 import shutil
 import logging
