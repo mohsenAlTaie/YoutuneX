@@ -7,6 +7,11 @@ from telegram.ext import (
 )
 import yt_dlp
 
+# >>> إضافة سطر تحديد موقع ffmpeg
+ffmpeg_location = shutil.which("ffmpeg")
+print(f"FFmpeg location: {ffmpeg_location}")
+# <<<
+
 # إعداد اللوجات
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
