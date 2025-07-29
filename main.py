@@ -1,11 +1,26 @@
-import os
 import shutil
+import os
 import logging
+import yt_dlp
+
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 )
-import yt_dlp
+
+# فحص ffmpeg أول مرة
+print("FFmpeg first check:", shutil.which("ffmpeg"))
+
+# تحديد موقع ffmpeg
+ffmpeg_location = shutil.which("ffmpeg")
+print(f"FFmpeg location: {ffmpeg_location}")
+
+# إصدار yt-dlp
+print("yt-dlp version:", yt_dlp.version.__version__)
+
+# فحص مجلد التحميلات
+print("هل مجلد downloads موجود؟", os.path.exists("downloads"))
+print("هل يمكن الكتابة؟", os.access("downloads", os.W_OK))
 
 # إعداد اللوجات
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -74,24 +89,22 @@ async def download_youtube_mp3(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = update.effective_user.id
     file_name = f"downloads/{user_id}_music.mp3"
 
+    # طباعة كل المتغيرات المهمة كل مرة
     ffmpeg_location = shutil.which("ffmpeg")
-    print(f"🔥 FFmpeg location: {ffmpeg_location}")  # سيظهر باللوج
-
-    if not ffmpeg_location:
-        await update.message.reply_text("❌ ffmpeg غير مثبت على السيرفر! راجع إعدادات الاستضافة أو المطور.")
-        return
+    print(f"🔥 FFmpeg location: {ffmpeg_location}")
+    print("yt-dlp version:", yt_dlp.version.__version__)
+    print("هل مجلد downloads موجود؟", os.path.exists("downloads"))
+    print("هل يمكن الكتابة؟", os.access("downloads", os.W_OK))
+    print("الرابط الذي أرسله المستخدم:", url)
 
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": file_name,
-        "postprocessors": [{
-            "key": "FFmpegExtractAudio",
-            "preferredcodec": "mp3",
-            "preferredquality": "192"
-        }],
-        "cookiefile": COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
-        "quiet": True,
-        "ffmpeg_location": ffmpeg_location
+        "noplaylist": True,
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+        "quiet": False,
+        "ffmpeg_location": ffmpeg_location,
+        "cookiefile": COOKIES_FILE if os.path.exists(COOKIES_FILE) else None
     }
 
     msg = await update.message.reply_text("⏳ جاري تحميل الموسيقى... انتظر لحظات.")
@@ -99,7 +112,13 @@ async def download_youtube_mp3(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
+        # طباعة حجم الملف بعد التحميل
         if os.path.exists(file_name):
+            print("حجم الملف:", os.path.getsize(file_name))
+        else:
+            print("ملف غير موجود بعد التحميل")
+
+        if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
             await update.message.reply_audio(
                 audio=open(file_name, "rb"),
                 title="موسيقاك جاهزة 🎶"
@@ -109,7 +128,9 @@ async def download_youtube_mp3(update: Update, context: ContextTypes.DEFAULT_TYP
         else:
             await msg.edit_text(f"❌ فشل التحويل! الملف لم يُنتج. تحقق من ffmpeg ومن الرابط.")
     except Exception as e:
-        await msg.edit_text(f"❌ حدث خطأ أثناء التحميل:\n{str(e)}")
+        import traceback
+        tb = traceback.format_exc()
+        await msg.edit_text(f"❌ حدث خطأ أثناء التحميل:\n{str(e)}\n\nتفاصيل:\n{tb}")
 
 def main():
     print("🔥🔥 MAIN.PY STARTED 🔥🔥")  # تأكيد بدء البوت باللوج
