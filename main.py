@@ -2,6 +2,7 @@ import shutil
 import os
 import logging
 import yt_dlp
+from datetime import datetime, timedelta
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
@@ -31,32 +32,53 @@ SOCIAL_BOT_USERNAME = "@Dr7a_bot"
 DEVELOPER_USERNAME = "@K0_MG"
 COOKIES_FILE = "cookies_youtube.txt"
 
-# تأكد من وجود مجلد downloads
 if not os.path.exists("downloads"):
     os.makedirs("downloads", exist_ok=True)
 
-# رسالة ترحيب
-WELCOME_MESSAGE = """
-🎧✨ أهلاً بك في عالم الموسيقى السرّي ✨🎧
+# رسائل ترحيب ليلية ونهارية
+NIGHT_MESSAGE = """
+🌑🎧 *مرحباً بك في عالم الموسيقى الليلي!* 🎧🌑
 
-هنا حيث تتحول الروابط إلى أنغام، والصمت إلى إبداع.
-🔮 كل ما عليك فعله: أرسل رابط يوتيوب لأغنيتك المفضلة، والبوت سيحوّلها إلى MP3 بجودة عالية خلال لحظات.
+هنا تحت ضوء القمر، تتحول الروابط إلى أنغامٍ سرية، ويندمج صوتك مع ظلال الليل.
+أرسل رابط يوتيوب... واجعل الليل يغني لك 🎶🌙
 
-أطلق العنان لذوقك الموسيقي، وجرّب أسرع بوت موسيقى في التيليغرام 🚀
+🌌 اختر مغامرتك الليلة من الأزرار أدناه!
+"""
+
+DAY_MESSAGE = """
+🌞🎧 *صباح الإبداع في عالم الموسيقى!* 🎧🌞
+
+هنا، تحت أشعة الشمس الذهبية، تتحول الروابط إلى أنغام تبعث الأمل والحياة.
+كل ما عليك فعله: أرسل رابط يوتيوب ودع البوت يملأ يومك بأجمل الألحان! 🎵✨
+
+🚀 استمتع بتجربة موسيقية نهارية لا مثيل لها عبر الأزرار بالأسفل!
 """
 
 def get_main_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎵 تحميل من يوتيوب", callback_data="download_youtube")],
-        [InlineKeyboardButton("🌍 تحميل من جميع المواقع", url=f"https://t.me/{SOCIAL_BOT_USERNAME.lstrip('@')}")],
-        [InlineKeyboardButton("🤖 تواصل مع المطور", url="https://t.me/K0_MG")],
-        [InlineKeyboardButton("🚀 شارك البوت مع أصدقائك", switch_inline_query="جرب أقوى بوت موسيقى! @YoutuneX_bot")]
+        [InlineKeyboardButton("🌌 استكشف موسيقاك من يوتيوب", callback_data="download_youtube")],
+        [InlineKeyboardButton("🪐 استكشف بقية المجرات (كل المواقع)", url=f"https://t.me/{SOCIAL_BOT_USERNAME.lstrip('@')}")],
+        [
+            InlineKeyboardButton("👨‍💻 تواصل مع حارس البوابة", url="https://t.me/K0_MG"),
+            InlineKeyboardButton("🎁 شارك البوابة مع المغامرين", switch_inline_query="جرب أقوى بوت موسيقى! @YoutuneX_bot")
+        ],
+        [InlineKeyboardButton("🚪 بوابة البداية", callback_data="back_to_main")]
     ])
+
+def get_greeting_message():
+    # بغداد UTC+3
+    now = datetime.utcnow() + timedelta(hours=3)
+    hour = now.hour
+    if 19 <= hour or hour < 7:
+        return NIGHT_MESSAGE
+    else:
+        return DAY_MESSAGE
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        WELCOME_MESSAGE,
-        reply_markup=get_main_keyboard()
+        get_greeting_message(),
+        reply_markup=get_main_keyboard(),
+        parse_mode="Markdown"
     )
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -64,15 +86,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     if query.data == "download_youtube":
         await query.edit_message_text(
-            "🎵 أرسل الآن رابط فيديو يوتيوب الذي تريد تحميله كملف MP3 (موسيقى فقط).\n\nمثال: https://www.youtube.com/watch?v=xxxxxxx",
+            "🎵 *أرسل الآن رابط فيديو يوتيوب لتحويله لموسيقى خيالية MP3!*\n\nمثال: https://www.youtube.com/watch?v=xxxxxxx",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⬅️ العودة", callback_data="back_to_main")]
-            ])
+                [InlineKeyboardButton("⬅️ العودة إلى المدينة", callback_data="back_to_main")]
+            ]),
+            parse_mode="Markdown"
         )
     elif query.data == "back_to_main":
         await query.edit_message_text(
-            WELCOME_MESSAGE,
-            reply_markup=get_main_keyboard()
+            get_greeting_message(),
+            reply_markup=get_main_keyboard(),
+            parse_mode="Markdown"
         )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -81,7 +105,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await download_youtube_mp3(update, context, text)
     else:
         await update.message.reply_text(
-            "❌ أرسل رابط فيديو يوتيوب صحيح فقط!"
+            "❌ *رجاءً أرسل رابط فيديو يوتيوب صالح فقط!*",
+            reply_markup=get_main_keyboard(),
+            parse_mode="Markdown"
         )
 
 async def download_youtube_mp3(update: Update, context: ContextTypes.DEFAULT_TYPE, url=None):
@@ -89,7 +115,6 @@ async def download_youtube_mp3(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = update.effective_user.id
     file_name = f"downloads/{user_id}_music.mp3"
 
-    # طباعة كل المتغيرات المهمة كل مرة
     ffmpeg_location = shutil.which("ffmpeg")
     print(f"🔥 FFmpeg location: {ffmpeg_location}")
     print("yt-dlp version:", yt_dlp.version.__version__)
@@ -107,33 +132,27 @@ async def download_youtube_mp3(update: Update, context: ContextTypes.DEFAULT_TYP
         "cookiefile": COOKIES_FILE if os.path.exists(COOKIES_FILE) else None
     }
 
-    msg = await update.message.reply_text("⏳ جاري تحميل الموسيقى... انتظر لحظات.")
+    msg = await update.message.reply_text("🚀 *جاري فتح البوابة الصوتية وتحويل الموسيقى... انتظر!*", parse_mode="Markdown")
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-        # طباعة حجم الملف بعد التحميل
-        if os.path.exists(file_name):
-            print("حجم الملف:", os.path.getsize(file_name))
-        else:
-            print("ملف غير موجود بعد التحميل")
-
         if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
             await update.message.reply_audio(
                 audio=open(file_name, "rb"),
-                title="موسيقاك جاهزة 🎶"
+                title="موسيقاك جاهزة من بعد البوابة! 🎶"
             )
             await msg.delete()
             os.remove(file_name)
         else:
-            await msg.edit_text(f"❌ فشل التحويل! الملف لم يُنتج. تحقق من ffmpeg ومن الرابط.")
+            await msg.edit_text(f"❌ فشل التحويل! الملف لم يُنتج. تحقق من ffmpeg ومن الرابط.", reply_markup=get_main_keyboard())
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
-        await msg.edit_text(f"❌ حدث خطأ أثناء التحميل:\n{str(e)}\n\nتفاصيل:\n{tb}")
+        await msg.edit_text(f"❌ حدث خطأ أثناء التحويل:\n{str(e)}\n\nتفاصيل:\n{tb}", reply_markup=get_main_keyboard())
 
 def main():
-    print("🔥🔥 MAIN.PY STARTED 🔥🔥")  # تأكيد بدء البوت باللوج
+    print("🔥🔥 MAIN.PY STARTED 🔥🔥")
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
