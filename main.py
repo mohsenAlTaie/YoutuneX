@@ -72,7 +72,6 @@ def get_greeting_message():
     baghdad = timezone('Asia/Baghdad')
     now = datetime.now(baghdad)
     hour = now.hour
-    print("الوقت الفعلي في بغداد:", now)
     if 19 <= hour or hour < 7:
         return NIGHT_MESSAGE
     else:
@@ -106,42 +105,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    user_id = query.from_user.id
-    await query.answer()
-    if query.data == "download_youtube":
-        await query.edit_message_text(
-            "🎵 *أرسل الآن رابط فيديو يوتيوب لتحويله لموسيقى خيالية MP3!*\n\nمثال: https://www.youtube.com/watch?v=xxxxxxx",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⬅️ العودة إلى القائمة الرئيسية", callback_data="back_to_main")]
-            ]),
-            parse_mode="Markdown"
-        )
-    elif query.data == "back_to_main":
-        await query.edit_message_text(
-            get_greeting_message(),
-            reply_markup=get_main_keyboard(),
-            parse_mode="Markdown"
-        )
-    elif query.data == "show_favorites":
-        favs = list_favorites(user_id)
-        if not favs:
-            txt = "⭐ قائمة أغانيك المفضلة فارغة حالياً.\nكل ما عليك: بعد تحميل أي أغنية اضغط زر ⭐ حتى تضيفها هنا."
-        else:
-            txt = "⭐ *قائمة أغانيك المفضلة:*\n\n"
-            for i, (title, url) in enumerate(favs, 1):
-                txt += f"{i}. [{title}]({url})\n"
-            txt += "\n🗑️ لمسح القائمة بالكامل: أرسل /clear_favorites"
-        await query.edit_message_text(
-            txt,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⬅️ العودة إلى القائمة الرئيسية", callback_data="back_to_main")]
-            ]),
-            parse_mode="Markdown",
-            disable_web_page_preview=True
-        )
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     if "youtube.com/" in text or "youtu.be/" in text:
@@ -159,12 +122,6 @@ async def download_youtube_mp3(update: Update, context: ContextTypes.DEFAULT_TYP
     file_name = f"downloads/{user_id}_music.mp3"
 
     ffmpeg_location = shutil.which("ffmpeg")
-    print(f"🔥 FFmpeg location: {ffmpeg_location}")
-    print("yt-dlp version:", yt_dlp.version.__version__)
-    print("هل مجلد downloads موجود؟", os.path.exists("downloads"))
-    print("هل يمكن الكتابة؟", os.access("downloads", os.W_OK))
-    print("الرابط الذي أرسله المستخدم:", url)
-
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": file_name,
@@ -204,13 +161,54 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     user_id = query.from_user.id
     data = query.data
+    await query.answer()
+    # زر اضافة للمفضلة
     if data.startswith("add_fav|"):
         _, title, url = data.split("|", 2)
         add_to_favorites(user_id, title, url)
         await query.answer("تمت إضافة الأغنية إلى قائمتك المفضلة! ⭐", show_alert=True)
         await query.edit_message_reply_markup(None)
-    else:
-        await button_handler(update, context)
+        return
+
+    # زر قائمة الأغاني المفضلة
+    elif data == "show_favorites":
+        favs = list_favorites(user_id)
+        if not favs:
+            txt = "⭐ قائمة أغانيك المفضلة فارغة حالياً.\nكل ما عليك: بعد تحميل أي أغنية اضغط زر ⭐ حتى تضيفها هنا."
+        else:
+            txt = "⭐ *قائمة أغانيك المفضلة:*\n\n"
+            for i, (title, url) in enumerate(favs, 1):
+                txt += f"{i}. [{title}]({url})\n"
+            txt += "\n🗑️ لمسح القائمة بالكامل: أرسل /clear_favorites"
+        await query.edit_message_text(
+            txt,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬅️ العودة إلى القائمة الرئيسية", callback_data="back_to_main")]
+            ]),
+            parse_mode="Markdown",
+            disable_web_page_preview=True
+        )
+        return
+
+    # العودة للقائمة الرئيسية
+    elif data == "back_to_main":
+        await query.edit_message_text(
+            get_greeting_message(),
+            reply_markup=get_main_keyboard(),
+            parse_mode="Markdown"
+        )
+        return
+
+    # زر تحميل يوتيوب
+    elif data == "download_youtube":
+        await query.edit_message_text(
+            "🎵 *أرسل الآن رابط فيديو يوتيوب لتحويله لموسيقى خيالية MP3!*\n\nمثال: https://www.youtube.com/watch?v=xxxxxxx",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬅️ العودة إلى القائمة الرئيسية", callback_data="back_to_main")]
+            ]),
+            parse_mode="Markdown"
+        )
+        return
 
 async def clear_favorites_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
