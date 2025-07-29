@@ -63,7 +63,6 @@ def get_main_keyboard():
         [InlineKeyboardButton("⭐ قائمة الأغاني المفضلة", callback_data="favorites")],
         [InlineKeyboardButton("🪐 استكشف بقية المجرات (كل المواقع)", url=f"https://t.me/{SOCIAL_BOT_USERNAME.lstrip('@')}")],
         [
-            InlineKeyboardButton("👨‍💻 تواصل مع حارس البوابة", url="https://t.me/K0_MG"),
             InlineKeyboardButton("💖 دعم المطور", url="https://t.me/K0_MG"),
             InlineKeyboardButton("🎁 شارك البوابة مع المغامرين", switch_inline_query="جرب أقوى بوت موسيقى! @YoutuneX_bot")
         ]
@@ -170,7 +169,6 @@ async def add_favorite_callback(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         data = query.data.replace("addfav_", "")
         url, title = data.split("|", 1)
-        # لا تكرر الإضافة لنفس الأغنية
         cur.execute("SELECT * FROM favorites WHERE user_id=? AND url=?", (user_id, url))
         if not cur.fetchone():
             cur.execute("INSERT INTO favorites (user_id, url, title) VALUES (?, ?, ?)", (user_id, url, title[:60]))
